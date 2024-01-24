@@ -1,0 +1,103 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerMover : MonoBehaviour
+{
+    public float moveSpeed = 5f;
+    public float climbSpeed = 5f;
+    public float jumpForce = 700f;
+    public LayerMask groundLayer;
+    public LayerMask ladderLayer;
+
+    private Rigidbody rb;
+    private Animator animator;
+    private bool isJumping = false;
+    private bool isClimbing = false;
+    private float climbInput;
+    private float horizontalInput;
+    private Collider coll;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        animator = GetComponent<Animator>();
+        coll = GetComponent<Collider>();
+    }
+
+    void Update()
+    {
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        climbInput = Input.GetAxisRaw("Vertical");
+
+        FlipCharacter();
+
+        if (Input.GetButtonDown("Jump") && IsGrounded())
+        {
+            isJumping = true;
+        }
+
+        CheckForClimbing();
+    }
+
+    void FixedUpdate()
+    {
+        // Horizontal movement
+        rb.velocity = new Vector3(horizontalInput * moveSpeed, rb.velocity.y, 0);
+
+        // Jump
+        if (isJumping)
+        {
+            rb.AddForce(new Vector3(0f, jumpForce, 0f), ForceMode.Impulse);
+            isJumping = false;
+        }
+
+        // Climbing logic
+        if (isClimbing)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, climbInput * climbSpeed, 0);
+            rb.useGravity = false; // No gravity when climbing
+        }
+        else
+        {
+            rb.useGravity = true; // Restore gravity
+        }
+    }
+
+    private void FlipCharacter()
+    {
+        if (horizontalInput > 0)
+            transform.localScale = new Vector3(1, 1, 1);
+        else if (horizontalInput < 0)
+            transform.localScale = new Vector3(-1, 1, 1);
+    }
+
+    private bool IsGrounded()
+    {
+        // Replace with a more suitable ground check for your game
+        // e.g., raycasting
+        return Physics.Raycast(transform.position, -Vector3.up, coll.bounds.extents.y + 0.1f, groundLayer);
+    }
+
+    private void CheckForClimbing()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, transform.forward, out hit, 1f, ladderLayer))
+        {
+            isClimbing = Mathf.Abs(climbInput) > 0f;
+        }
+        else
+        {
+            isClimbing = false;
+        }
+    }
+
+    // This would be triggered when the player exits the ladder's collider
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.layer == LayerMask.NameToLayer("Ladder"))
+        {
+            isClimbing = false;
+        }
+    }
+}
